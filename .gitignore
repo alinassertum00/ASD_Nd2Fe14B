@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Generated analysis outputs
+results/*
+!results/.gitkeep
+*_profile.csv
+*_summary.csv
+*_fit.csv
+*.xlsx
+
+# VAMPIRE runtime outputs
+run.log
+output
+output.*
+dw-*.txt
+checkpoint*
+*.cfg
+
+# Generated CMC sweeps
+simulations/constrained_monte_carlo/CMC_*K/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

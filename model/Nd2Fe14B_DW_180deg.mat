@@ -1,0 +1,114 @@
+#==============================================================
+# Nd2Fe14B site-resolved material file for VAMPIRE
+# Matched to: Nd2Fe14B.ucf
+#==============================================================
+
+material:num-materials = 9
+
+material[1]:material-name = Nd_4g
+material[1]:material-element = Nd
+material[1]:damping-constant = 1.0
+material[1]:atomic-spin-moment = 2.86 !muB
+material[1]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[1]:second-order-uniaxial-anisotropy-constant = 9.478571428571e-22
+material[1]:fourth-order-uniaxial-anisotropy-constant = 5.301818181818e-21
+material[1]:sixth-order-uniaxial-anisotropy-constant = -2.383376623377e-21
+material[1]:temperature-rescaling-exponent = 1.802
+material[1]:temperature-rescaling-curie-temperature = 602
+material[1]:unit-cell-category = 1
+
+material[2]:material-name = Nd_4f
+material[2]:material-element = Nd
+material[2]:damping-constant = 1.0
+material[2]:atomic-spin-moment = 2.871 !muB
+material[2]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[2]:second-order-uniaxial-anisotropy-constant = 9.478571428571e-22
+material[2]:fourth-order-uniaxial-anisotropy-constant = 5.301818181818e-21
+material[2]:sixth-order-uniaxial-anisotropy-constant = -2.383376623377e-21
+material[2]:temperature-rescaling-exponent = 1.802
+material[2]:temperature-rescaling-curie-temperature = 602
+material[2]:unit-cell-category = 2
+
+material[3]:material-name = Fe_4c
+material[3]:material-element = Fe
+material[3]:damping-constant = 1.0
+material[3]:atomic-spin-moment = 2.531 !muB
+material[3]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[3]:second-order-uniaxial-anisotropy-constant = -3.420000000000e-22
+material[3]:temperature-rescaling-exponent = 1.802
+material[3]:temperature-rescaling-curie-temperature = 602
+material[3]:unit-cell-category = 3
+
+material[4]:material-name = Fe_4e
+material[4]:material-element = Fe
+material[4]:damping-constant = 1.0
+material[4]:atomic-spin-moment = 1.874 !muB
+material[4]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[4]:second-order-uniaxial-anisotropy-constant = -4.800000000000e-24
+material[4]:temperature-rescaling-exponent = 1.802
+material[4]:temperature-rescaling-curie-temperature = 602
+material[4]:unit-cell-category = 4
+
+material[5]:material-name = Fe_8j2
+material[5]:material-element = Fe
+material[5]:damping-constant = 1.0
+material[5]:atomic-spin-moment = 2.629 !muB
+material[5]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[5]:second-order-uniaxial-anisotropy-constant = 9.300000000000e-23
+material[5]:temperature-rescaling-exponent = 1.802
+material[5]:temperature-rescaling-curie-temperature = 602
+material[5]:unit-cell-category = 5
+
+material[6]:material-name = Fe_8j1
+material[6]:material-element = Fe
+material[6]:damping-constant = 1.0
+material[6]:atomic-spin-moment = 2.298 !muB
+material[6]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[6]:second-order-uniaxial-anisotropy-constant = 1.710000000000e-22
+material[6]:temperature-rescaling-exponent = 1.802
+material[6]:temperature-rescaling-curie-temperature = 602
+material[6]:unit-cell-category = 6
+
+material[7]:material-name = Fe_16k1
+material[7]:material-element = Fe
+material[7]:damping-constant = 1.0
+material[7]:atomic-spin-moment = 2.063 !muB
+material[7]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[7]:second-order-uniaxial-anisotropy-constant = 8.800000000000e-23
+material[7]:temperature-rescaling-exponent = 1.802
+material[7]:temperature-rescaling-curie-temperature = 602
+material[7]:unit-cell-category = 7
+
+material[8]:material-name = Fe_16k2
+material[8]:material-element = Fe
+material[8]:damping-constant = 1.0
+material[8]:atomic-spin-moment = 2.206 !muB
+material[8]:uniaxial-anisotropy-direction = 0.0,0.0,1.0
+material[8]:second-order-uniaxial-anisotropy-constant = 6.080000000000e-23
+material[8]:temperature-rescaling-exponent = 1.802
+material[8]:temperature-rescaling-curie-temperature = 602
+material[8]:unit-cell-category = 8
+
+material[9]:material-name = B_nonmagnetic
+material[9]:material-element = B
+material[9]:non-magnetic
+material[9]:unit-cell-category = 9
+
+# Domain-wall initialization
+# Standard +z -> -z initialization for a 180-degree wall.
+material[1]:initial-spin-direction = 0.0,0.0,1.0
+material[1]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[2]:initial-spin-direction = 0.0,0.0,1.0
+material[2]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[3]:initial-spin-direction = 0.0,0.0,1.0
+material[3]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[4]:initial-spin-direction = 0.0,0.0,1.0
+material[4]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[5]:initial-spin-direction = 0.0,0.0,1.0
+material[5]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[6]:initial-spin-direction = 0.0,0.0,1.0
+material[6]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[7]:initial-spin-direction = 0.0,0.0,1.0
+material[7]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0
+material[8]:initial-spin-direction = 0.0,0.0,1.0
+material[8]:domain-wall-second-magnetisation-vector = 0.0,0.0,-1.0

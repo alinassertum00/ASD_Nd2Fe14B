@@ -1,0 +1,66 @@
+cd ~/data
+
+cat > make_CMC_10K_suspicious_50k.sh << 'EOF'
+#!/bin/bash
+set -e
+
+SRC=~/data/CMC_10K_30angles
+CASE=CMC_10K_suspicious_65_80_50k
+
+rm -rf "$CASE"
+mkdir -p "$CASE"
+cd "$CASE"
+
+cp "$SRC/Nd2Fe14B.mat" .
+cp "$SRC/Nd2Fe14B_scaled_175.ucf" .
+
+angles=(65.172 68.276 71.379 74.483 77.586 80.690)
+
+for a in "${angles[@]}"; do
+    d="angle_${a}deg"
+    mkdir -p "$d"
+
+    cat > "$d/input" << EOF2
+material:unit-cell-file = ../Nd2Fe14B_scaled_175.ucf
+material:file = ../Nd2Fe14B.mat
+
+create:periodic-boundaries-x
+create:periodic-boundaries-y
+create:periodic-boundaries-z
+
+dimensions:system-size-x = 10 !nm
+dimensions:system-size-y = 10 !nm
+dimensions:system-size-z = 10 !nm
+
+sim:minimum-temperature = 10
+sim:maximum-temperature = 10
+sim:temperature-increment = 1
+
+sim:equilibration-time-steps = 50000
+sim:loop-time-steps = 50000
+
+sim:constraint-angle-theta-minimum = 0
+sim:constraint-angle-theta-maximum = 0
+sim:constraint-angle-theta-increment = 1
+
+sim:constraint-angle-phi-minimum = $a
+sim:constraint-angle-phi-maximum = $a
+sim:constraint-angle-phi-increment = 1
+
+sim:integrator = constrained-monte-carlo
+sim:program = cmc-anisotropy
+
+output:temperature
+output:constraint-theta
+output:constraint-phi
+output:mean-magnetisation-length
+output:mean-total-torque
+output:mean-total-energy
+EOF2
+done
+
+echo "Created $CASE"
+EOF
+
+chmod +x make_CMC_10K_suspicious_50k.sh
+./make_CMC_10K_suspicious_50k.sh

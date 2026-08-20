@@ -1,0 +1,11 @@
+cd ~/data/CMC_10K_suspicious_65_80_50k
+
+for d in angle_*deg; do
+  (
+    cd "$d"
+    ~/data/vampire/vampire-serial > run.log 2>&1
+  ) &
+done
+
+wait
+echo "done"
