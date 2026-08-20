@@ -1,0 +1,359 @@
+#!/usr/bin/env python3
+"""
+Robust global fit of Nd2Fe14B constrained-Monte-Carlo torque data.
+
+Free-energy model
+-----------------
+F(theta,T) = K1(T) sin^2(theta) + K2(T) sin^4(theta) + K3(T) sin^6(theta)
+
+Torque model
+------------
+Ty(theta,T) = -dF/dtheta
+
+The fit uses:
+- Ty converted to torque density with V = 1.1e-24 m^3;
+- the physical rotation angle phi_deg;
+- automatic removal of the non-rigid-angle region using M(theta);
+- simultaneous fitting of every temperature;
+- weak temperature-smoothness regularisation;
+- stabilisation of the poorly conditioned sixth-order coefficient K3.
+
+No published K values are used as fitting targets.
+"""
+
+from pathlib import Path
+import csv
+import zipfile
+import xml.etree.ElementTree as ET
+import numpy as np
+
+BASE = Path.home() / "data"
+VOLUME_M3 = 1.1e-24
+M_THRESHOLD = 0.95
+MINIMUM_ANGLE_DEG = 57.0
+LAMBDA_SMOOTH = 0.1
+LAMBDA_K3 = 1.0
+
+FILES = {
+    25: BASE / "collected_25K_step3_10k(9).xlsx",
+    50: BASE / "collected_50K_step3_10k(10).xlsx",
+    75: BASE / "collected_75K_step3_10k(10).xlsx",
+    100: BASE / "collected_100K_step3_10k(9).xlsx",
+    150: BASE / "collected_150K_step3_10k(11).xlsx",
+    200: BASE / "collected_200K_step3_10k(9).xlsx",
+    250: BASE / "collected_250K_step3_10k(9).xlsx",
+    300: BASE / "collected_300K_step3_10k(8).xlsx",
+    350: BASE / "collected_350K_step3_10k(8).xlsx",
+    400: BASE / "collected_400K_step3_10k(8).xlsx",
+    450: BASE / "collected_450K_step3_10k(8).xlsx",
+    500: BASE / "collected_500K_step3_10k(8).xlsx",
+}
+
+
+def read_xlsx_sheet1(path: Path):
+    """Read simple numeric/string values from sheet1 without pandas/openpyxl."""
+    namespace = {
+        "m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+    }
+
+    with zipfile.ZipFile(path) as archive:
+        shared_strings = []
+        if "xl/sharedStrings.xml" in archive.namelist():
+            root = ET.fromstring(archive.read("xl/sharedStrings.xml"))
+            for item in root.findall("m:si", namespace):
+                text = "".join(
+                    node.text or ""
+                    for node in item.iter(
+                        "{http://schemas.openxmlformats.org/"
+                        "spreadsheetml/2006/main}t"
+                    )
+                )
+                shared_strings.append(text)
+
+        sheet_root = ET.fromstring(
+            archive.read("xl/worksheets/sheet1.xml")
+        )
+
+        rows = []
+        for row in sheet_root.findall(
+            ".//m:sheetData/m:row", namespace
+        ):
+            record = {}
+            for cell in row.findall("m:c", namespace):
+                reference = cell.attrib["r"]
+                column = "".join(
+                    character for character in reference
+                    if character.isalpha()
+                )
+                cell_type = cell.attrib.get("t")
+                value_node = cell.find("m:v", namespace)
+
+                value = None
+                if value_node is not None:
+                    raw = value_node.text
+                    if cell_type == "s":
+                        value = shared_strings[int(raw)]
+                    else:
+                        try:
+                            value = float(raw)
+                        except ValueError:
+                            value = raw
+
+                record[column] = value
+            rows.append(record)
+
+    return rows
+
+
+def load_temperature(path: Path):
+    rows = read_xlsx_sheet1(path)
+    array = np.asarray(
+        [[row["D"], row["E"], row["G"]] for row in rows[1:]],
+        dtype=float,
+    )
+    return {
+        "angle_deg": array[:, 0],
+        "M": array[:, 1],
+        "Ty_density": array[:, 2] / VOLUME_M3 * 1e-6,
+    }
+
+
+def select_contiguous_valid_range(angle_deg, magnetisation):
+    """
+    Keep a contiguous interval from zero angle.
+
+    The upper limit is the point immediately before the first post-30-degree
+    magnetisation value below 95% of the maximum. At least 0--57 degrees are
+    retained to prevent underdetermination.
+    """
+    maximum = float(np.max(magnetisation))
+    invalid = np.where(
+        (angle_deg >= 30.0)
+        & (magnetisation < M_THRESHOLD * maximum)
+    )[0]
+
+    if len(invalid):
+        cutoff_index = int(invalid[0] - 1)
+    else:
+        cutoff_index = len(angle_deg) - 1
+
+    minimum_index = int(np.where(
+        angle_deg <= MINIMUM_ANGLE_DEG
+    )[0][-1])
+
+    return max(cutoff_index, minimum_index)
+
+
+def torque_design(theta):
+    return np.column_stack([
+        -2.0 * np.sin(theta) * np.cos(theta),
+        -4.0 * np.sin(theta) ** 3 * np.cos(theta),
+        -6.0 * np.sin(theta) ** 5 * np.cos(theta),
+    ])
+
+
+def fitted_torque(theta, coefficients):
+    return torque_design(theta) @ coefficients
+
+
+def fitted_energy(theta, coefficients):
+    K1, K2, K3 = coefficients
+    return (
+        K1 * np.sin(theta) ** 2
+        + K2 * np.sin(theta) ** 4
+        + K3 * np.sin(theta) ** 6
+    )
+
+
+def main():
+    temperatures = np.asarray(sorted(FILES), dtype=float)
+    datasets = []
+
+    for temperature in temperatures:
+        path = FILES[int(temperature)]
+        if not path.exists():
+            raise FileNotFoundError(f"Missing input file: {path}")
+
+        dataset = load_temperature(path)
+        cutoff_index = select_contiguous_valid_range(
+            dataset["angle_deg"], dataset["M"]
+        )
+
+        theta = np.deg2rad(
+            dataset["angle_deg"][:cutoff_index + 1]
+        )
+        datasets.append({
+            **dataset,
+            "temperature": int(temperature),
+            "cutoff_index": cutoff_index,
+            "cutoff_deg": float(
+                dataset["angle_deg"][cutoff_index]
+            ),
+            "theta_valid": theta,
+            "design": torque_design(theta),
+            "Ty_valid": dataset["Ty_density"][
+                :cutoff_index + 1
+            ],
+        })
+
+    number_of_temperatures = len(datasets)
+    rows = []
+    right_hand_side = []
+
+    # Data fidelity equations.
+    for temperature_index, dataset in enumerate(datasets):
+        for design_row, measured_value in zip(
+            dataset["design"], dataset["Ty_valid"]
+        ):
+            row = np.zeros(3 * number_of_temperatures)
+            start = 3 * temperature_index
+            row[start:start + 3] = design_row
+            rows.append(row)
+            right_hand_side.append(measured_value)
+
+    # Smoothness between neighbouring temperatures.
+    for temperature_index in range(
+        number_of_temperatures - 1
+    ):
+        delta_temperature_scaled = (
+            temperatures[temperature_index + 1]
+            - temperatures[temperature_index]
+        ) / 25.0
+
+        for coefficient_index in range(3):
+            row = np.zeros(3 * number_of_temperatures)
+            row[
+                3 * temperature_index + coefficient_index
+            ] = (
+                -np.sqrt(LAMBDA_SMOOTH)
+                / delta_temperature_scaled
+            )
+            row[
+                3 * (temperature_index + 1)
+                + coefficient_index
+            ] = (
+                np.sqrt(LAMBDA_SMOOTH)
+                / delta_temperature_scaled
+            )
+            rows.append(row)
+            right_hand_side.append(0.0)
+
+    # Stabilise K3, the least identifiable coefficient.
+    for temperature_index in range(number_of_temperatures):
+        row = np.zeros(3 * number_of_temperatures)
+        row[3 * temperature_index + 2] = np.sqrt(
+            LAMBDA_K3
+        )
+        rows.append(row)
+        right_hand_side.append(0.0)
+
+    matrix = np.asarray(rows)
+    vector = np.asarray(right_hand_side)
+
+    solution, _, _, _ = np.linalg.lstsq(
+        matrix, vector, rcond=None
+    )
+    coefficients = solution.reshape(
+        number_of_temperatures, 3
+    )
+
+    summary_path = BASE / "anisotropy_fit_summary.csv"
+    detail_path = BASE / "anisotropy_fit_all_data.csv"
+
+    with summary_path.open(
+        "w", newline="", encoding="utf-8"
+    ) as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            "Temperature_K",
+            "Cutoff_angle_deg",
+            "K1_MJ_m3",
+            "K2_MJ_m3",
+            "K3_MJ_m3",
+            "Torque_RMSE_MJ_m3",
+        ])
+
+        for dataset, coefficient_set in zip(
+            datasets, coefficients
+        ):
+            predicted = fitted_torque(
+                dataset["theta_valid"],
+                coefficient_set,
+            )
+            rmse = float(np.sqrt(np.mean(
+                (
+                    dataset["Ty_valid"]
+                    - predicted
+                ) ** 2
+            )))
+
+            writer.writerow([
+                dataset["temperature"],
+                dataset["cutoff_deg"],
+                *coefficient_set,
+                rmse,
+            ])
+
+    with detail_path.open(
+        "w", newline="", encoding="utf-8"
+    ) as file:
+        writer = csv.writer(file)
+        writer.writerow([
+            "Temperature_K",
+            "Angle_deg",
+            "Magnetisation",
+            "Observed_Ty_density_MJ_m3",
+            "Fitted_Ty_density_MJ_m3",
+            "Fitted_free_energy_MJ_m3",
+            "Fit_status",
+        ])
+
+        for dataset, coefficient_set in zip(
+            datasets, coefficients
+        ):
+            theta_all = np.deg2rad(
+                dataset["angle_deg"]
+            )
+            predicted_torque = fitted_torque(
+                theta_all, coefficient_set
+            )
+            predicted_energy = fitted_energy(
+                theta_all, coefficient_set
+            )
+
+            for index, angle in enumerate(
+                dataset["angle_deg"]
+            ):
+                writer.writerow([
+                    dataset["temperature"],
+                    angle,
+                    dataset["M"][index],
+                    dataset["Ty_density"][index],
+                    predicted_torque[index],
+                    predicted_energy[index],
+                    (
+                        "Included"
+                        if index <= dataset["cutoff_index"]
+                        else "Excluded"
+                    ),
+                ])
+
+    print("\nFinal fitted coefficients")
+    print("T(K)       K1        K2        K3   cutoff")
+    for dataset, coefficient_set in zip(
+        datasets, coefficients
+    ):
+        print(
+            f"{dataset['temperature']:4d}"
+            f" {coefficient_set[0]:9.3f}"
+            f" {coefficient_set[1]:9.3f}"
+            f" {coefficient_set[2]:9.3f}"
+            f" {dataset['cutoff_deg']:7.0f} deg"
+        )
+
+    print(f"\nSaved: {summary_path}")
+    print(f"Saved: {detail_path}")
+
+
+if __name__ == "__main__":
+    main()

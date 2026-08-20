@@ -1,0 +1,34 @@
+material:unit-cell-file = Nd2Fe14B_scaled_175.ucf
+material:file = Nd2Fe14B_DW_180deg.mat
+
+# periodic only in y,z
+create:periodic-boundaries-y
+create:periodic-boundaries-z
+
+# allow wall along x
+dimensions:system-size-x = 40 !nm
+dimensions:system-size-y = 6 !nm
+dimensions:system-size-z = 6 !nm
+
+sim:program = domain-wall
+
+sim:temperature = 400
+
+sim:integrator = llg-heun
+
+sim:time-step = 1.0e-15
+sim:total-time-steps = 600000
+
+# domain wall setup
+sim:domain-wall-axis = x
+sim:domain-wall-position = 0.5
+sim:domain-wall-width = 0.1
+
+# 180-degree Bloch wall
+
+output:temperature
+output:mean-magnetisation
+output:mean-magnetisation-length
+output:magnetisation
+output:material-magnetisation
+
